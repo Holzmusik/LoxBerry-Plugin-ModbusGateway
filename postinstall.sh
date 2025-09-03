@@ -57,5 +57,9 @@ echo "<INFO> Plugin CONFIG folder is: $PCONFIG"
 echo "<INFO> Plugin SBIN folder is: $PSBIN"
 echo "<INFO> Plugin BIN folder is: $PBIN"
 
+#!/bin/bash
+chown loxberry:loxberry $LBPHTMLAUTH/uid.php
+chmod 755 $LBPHTMLAUTH/uid.php
+
 # Exit with Status 0
 exit 0
