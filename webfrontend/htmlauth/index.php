@@ -27,25 +27,25 @@ $navbar[2]['URL'] = 'log.php';
 
 /* Actions */
 if (!empty($_POST['req_start']) && !empty($_POST['device'])) {
-    $command = 'sudo ' . $lbpbindir . '/service.sh start mbusd@' . escapeshellarg($_POST['device']) . '.service';
+    $command = 'sudo ' . $lbpbindir . '/service.sh start mbusd@' . $_POST['device'] . '.service';
     $cmdstat = shell_exec($command);
-    $command = 'sudo ' . $lbpbindir . '/service.sh enable mbusd@' . escapeshellarg($_POST['device']) . '.service';
+    $command = 'sudo ' . $lbpbindir . '/service.sh enable mbusd@' . $_POST['device'] . '.service';
     $cmdstat = shell_exec($command);
     header("Location: index.php");
     exit;
 }
 
 if (!empty($_POST['req_stop']) && !empty($_POST['device'])) {
-    $command = 'sudo ' . $lbpbindir . '/service.sh stop mbusd@' . escapeshellarg($_POST['device']) . '.service';
+    $command = 'sudo ' . $lbpbindir . '/service.sh stop mbusd@' . $_POST['device'] . '.service';
     $cmdstat = shell_exec($command);
-    $command = 'sudo ' . $lbpbindir . '/service.sh disable mbusd@' . escapeshellarg($_POST['device']) . '.service';
+    $command = 'sudo ' . $lbpbindir . '/service.sh disable mbusd@' . $_POST['device'] . '.service';
     $cmdstat = shell_exec($command);
     header("Location: index.php");
     exit;
 }
 
 if (!empty($_POST['save_new']) && !empty($_POST['device'])) {
-    // Create default config for new gateway
+    // Default-Konfiguration für neues Gateway anlegen
     zmata_conf($lbpconfigdir, $_POST['device'], '9600', '8n1', 'addc', '502', '32', '60', '3', '100', '500');
     zmata_cfg($lbpconfigdir, $_POST['device'], '2');
     header("Location: index.php");
@@ -68,19 +68,20 @@ if (!empty($_POST['change']) && !empty($_POST['device'])) {
     );
     $loglevel = isset($_POST['loglevel']) ? $_POST['loglevel'] : '2';
     zmata_cfg($lbpconfigdir, $_POST['device'], $loglevel);
-    $command = 'sudo ' . $lbpbindir . '/service.sh restart mbusd@' . escapeshellarg($_POST['device']) . '.service';
+
+    $command = 'sudo ' . $lbpbindir . '/service.sh restart mbusd@' . $_POST['device'] . '.service';
     $cmdstat = shell_exec($command);
     header("Location: index.php");
     exit;
 }
 
 if (!empty($_POST['save_del']) && !empty($_POST['device'])) {
-    // Remove conf
+    // conf entfernen
     $cfgfile = $lbpconfigdir . '/mbusd-' . $_POST['device'] . '.conf';
     if (file_exists($cfgfile)) {
         @unlink($cfgfile);
     }
-    // Remove cfg
+    // cfg entfernen
     $cfgfile = $lbpconfigdir . '/mbusd-' . $_POST['device'] . '.cfg';
     if (file_exists($cfgfile)) {
         @unlink($cfgfile);
@@ -99,7 +100,7 @@ if (!empty($_POST['req_new'])) {
     echo '<p class="wide">' . (isset($L['GWNEW.HEAD']) ? $L['GWNEW.HEAD'] : 'Neues Gateway hinzufügen') . '</p>';
     echo '<p>' . (isset($L['GWNEW.TEXT']) ? $L['GWNEW.TEXT'] : 'Wähle eine serielle Schnittstelle, um ein neues Gateway zu erstellen.') . '</p>';
 
-    // read cfg global file to find serial path
+    // globalen Pfad zu seriellen Geräten aus mbusd.cfg ermitteln
     $serialcfg = $lbpconfigdir . '/mbusd.cfg';
     $serialpath = '/dev/serial/by-id/';
     if (file_exists($serialcfg)) {
@@ -110,7 +111,7 @@ if (!empty($_POST['req_new'])) {
                 $serialpath = $tmp;
             }
         } catch (Exception $e) {
-            // fallback keeps default
+            // Fallback belassen
         }
     }
 
@@ -162,18 +163,19 @@ if (!empty($_POST['req_new'])) {
     echo '<p>' . (isset($L['MAIN.INTRO1']) ? $L['MAIN.INTRO1'] : 'Verwalte deine Modbus-Gateways und deren Konfigurationen.') . '</p>';
     echo '<br>';
 
-    // GATEWAYS
+    // Gateways-Header + Neuerstellen
     echo '<p class="wide">' . (isset($L['GATEWAYS.HEAD']) ? $L['GATEWAYS.HEAD'] : 'Gateways') . '</p>';
     echo '<form action="index.php" method="post">';
     echo '<input data-role="button" data-inline="true" data-mini="true" data-icon="plus" type="submit" name="req_new" value="' . (isset($L['GATEWAYS.NEW']) ? $L['GATEWAYS.NEW'] : 'Neues Gateway') . '">';
     echo '</form>';
 
+    // Vorauswahl für Detailansicht
     $gwdevice = !empty($_POST['show_detail']) ? $_POST['show_detail'] : null;
 
     $found = false;
     $mask = $lbpconfigdir . "/*.conf";
     foreach (glob($mask) as $file) {
-        // read conf file
+        // Konfig lesen
         try {
             $cfg = new Config_Lite($file);
         } catch (Exception $e) {
@@ -185,18 +187,17 @@ if (!empty($_POST['req_new'])) {
             continue;
         }
 
-        // Extract device name from path, e.g., /dev/serial/by-id/xxx -> xxx
+        // Gerätename aus Pfad extrahieren (/dev/serial/by-id/NAME -> NAME)
         $devfile_array = explode("/", $devfile);
         $device = end($devfile_array);
         if (empty($device)) {
             continue;
         }
 
-        // Service status
-        $command = $lbpbindir . '/service.sh status mbusd@' . escapeshellarg($device) . '.service | grep Active';
+        // Servicestatus
+        $command = $lbpbindir . '/service.sh status mbusd@' . $device . '.service | grep Active';
         $cmd = shell_exec($command);
         $statusline = is_string($cmd) ? trim($cmd) : '';
-        // Keep compatibility with old parsing (inacti / active)
         $status_short = substr($statusline, 11, 6);
         $is_active = (strpos($statusline, 'Active: active') !== false);
 
@@ -224,24 +225,24 @@ if (!empty($_POST['req_new'])) {
         }
         $found = true;
 
-        // Ensure .cfg exists; if not, create and optionally restart if running
+        // .cfg sicherstellen; falls nicht vorhanden, anlegen und ggf. neu starten
         $filecfg = $lbpconfigdir . '/mbusd-' . $device . '.cfg';
         if (!file_exists($filecfg)) {
             zmata_cfg($lbpconfigdir, $device, '2');
             if ($is_active) {
-                $command = 'sudo ' . $lbpbindir . '/service.sh restart mbusd@' . escapeshellarg($device) . '.service';
+                $command = 'sudo ' . $lbpbindir . '/service.sh restart mbusd@' . $device . '.service';
                 $cmdstat = shell_exec($command);
             }
         }
     }
 
-    // DETAILS
+    // Detailbereich
     if ($found && !empty($gwdevice)) {
 
         echo '<br><br>';
         echo '<p class="wide">' . (isset($L['GWDETAIL.HEAD']) ? $L['GWDETAIL.HEAD'] : 'Details') . '</p>';
 
-        // read conf file
+        // Konfig des ausgewählten Gateways lesen
         $file = $lbpconfigdir . '/mbusd-' . $gwdevice . '.conf';
         try {
             $cfg = new Config_Lite($file);
@@ -250,11 +251,7 @@ if (!empty($_POST['req_new'])) {
         }
 
         if ($cfg) {
-            $devfile = $cfg->get(null, "device");
-
-            echo '<div>';
-            echo '<p><b>' . (isset($L['GATEWAYS.DEVICE']) ? $L['GATEWAYS.DEVICE'] : 'Gerät') . ': ' . htmlspecialchars($gwdevice) . '</b></p>';
-
+            $devfile     = $cfg->get(null, "device");
             $speed       = $cfg->get(null, "speed");
             $mode        = $cfg->get(null, "mode");
             $trx_control = $cfg->get(null, "trx_control");
@@ -265,7 +262,7 @@ if (!empty($_POST['req_new'])) {
             $pause       = $cfg->get(null, "pause");
             $wait        = $cfg->get(null, "wait");
 
-            // read loglevel from .cfg (optional)
+            // Loglevel aus .cfg lesen
             $logcfgfile = $lbpconfigdir . '/mbusd-' . $gwdevice . '.cfg';
             $loglevel = '2';
             if (file_exists($logcfgfile)) {
@@ -275,13 +272,18 @@ if (!empty($_POST['req_new'])) {
                     if ($tmpLL !== null && $tmpLL !== '') {
                         $loglevel = $tmpLL;
                     }
-                } catch (Exception $e) { /* keep default */ }
+                } catch (Exception $e) {
+                    // Default beibehalten
+                }
             }
 
-            // write form
+            echo '<div>';
+            echo '<p><b>' . (isset($L['GATEWAYS.DEVICE']) ? $L['GATEWAYS.DEVICE'] : 'Gerät') . ': ' . htmlspecialchars($gwdevice) . '</b></p>';
+
             echo '<form action="index.php" method="post">';
-            echo '<label for="speed">' . (isset($L['GWDETAIL.SPEED1']) ? $L['GWDETAIL.SPEED1'] : 'Baudrate') . ' <i>(' . (isset($L['GWDETAIL.SPEED2']) ? $L['GWDETAIL.SPEED2'] : 'z. B. 9600') . ')</i></label>';
             echo '<input type="hidden" name="device" value="' . htmlspecialchars($gwdevice, ENT_QUOTES) . '">';
+
+            echo '<label for="speed">' . (isset($L['GWDETAIL.SPEED1']) ? $L['GWDETAIL.SPEED1'] : 'Baudrate') . ' <i>(' . (isset($L['GWDETAIL.SPEED2']) ? $L['GWDETAIL.SPEED2'] : 'z. B. 9600') . ')</i></label>';
             echo '<select data-inline="true" data-mini="true" name="speed" id="speed">';
             echo zmata_option_set("1200", "", "", $speed);
             echo zmata_option_set("2400", "", "", $speed);
@@ -322,7 +324,6 @@ if (!empty($_POST['req_new'])) {
             echo '<label for="wait">' . (isset($L['GWDETAIL.WAIT1']) ? $L['GWDETAIL.WAIT1'] : 'Wartezeit') . ' <i>(' . (isset($L['GWDETAIL.WAIT2']) ? $L['GWDETAIL.WAIT2'] : 'ms') . ')</i></label>';
             echo '<input data-inline="true" data-mini="true" name="wait" id="wait" value="' . htmlspecialchars($wait) . '" type="text">';
 
-            // loglevel
             echo '<label for="loglevel">' . (isset($L['GWDETAIL.LOGLEVEL1']) ? $L['GWDETAIL.LOGLEVEL1'] : 'Log-Level') . '</label>';
             echo '<select data-inline="true" data-mini="true" name="loglevel" id="loglevel">';
             $levels = ['0','1','2','3','4','5','6','7'];
@@ -345,6 +346,7 @@ if (!empty($_POST['req_new'])) {
             echo '<input data-role="button" data-inline="true" data-mini="true" data-icon="search" type="submit" value="UID Lernmodus starten">';
             echo '</form>';
             echo '</div>';
+
         } else {
             echo '<div class="ui-corner-all ui-shadow ui-field-contain"><p>Konfiguration für ' . htmlspecialchars($gwdevice) . ' nicht lesbar.</p></div>';
         }
