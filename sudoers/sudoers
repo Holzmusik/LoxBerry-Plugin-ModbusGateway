@@ -1,1 +1,2 @@
 %loxberry ALL = NOPASSWD: REPLACELBPBINDIR/service.sh
+www-data ALL=(ALL) NOPASSWD: /opt/loxberry/bin/uid_assign.py
